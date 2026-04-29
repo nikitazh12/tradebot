@@ -1,0 +1,14 @@
+# Пример watchlist — скопируй в watchlist.yml и подправь
+# Команда загрузки: uv run tradebot watchlist:load watchlist.yml
+
+tickers:
+  - ticker: SBER
+    notes: "Сбербанк — высокая ликвидность"
+  - ticker: GAZP
+    notes: "Газпром"
+  - ticker: LKOH
+    notes: "Лукойл"
+  - ticker: YNDX
+    notes: "Яндекс"
+  - ticker: POSI
+    notes: "Positive Technologies — высокая волатильность, ROCKET-кандидат"
