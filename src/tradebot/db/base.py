@@ -15,7 +15,12 @@ _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 def init_db(database_url: str) -> None:
     global _engine, _session_factory
-    _engine = create_async_engine(database_url, echo=False, pool_pre_ping=True)
+    kwargs: dict[str, object] = {"echo": False}
+    if database_url.startswith("sqlite"):
+        kwargs["connect_args"] = {"check_same_thread": False}
+    else:
+        kwargs["pool_pre_ping"] = True
+    _engine = create_async_engine(database_url, **kwargs)
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
 

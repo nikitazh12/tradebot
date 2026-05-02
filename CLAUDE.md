@@ -11,8 +11,8 @@ T-Invest Signal Bot — signal scanner на T-Invest API.
 ## Стек
 
 - Python 3.12+, uv, async/await
-- aiogram (Telegram), tinkoff.invest SDK (T-Invest API)
-- PostgreSQL + SQLAlchemy 2.x (async) + Alembic
+- aiogram (Telegram), t-tech-investments SDK (`from t_tech.invest import AsyncClient`)
+- **SQLite** + aiosqlite + SQLAlchemy 2.x (async) + Alembic (Docker НЕ нужен)
 - pydantic-settings (.env), pandas/numpy (расчёты)
 - pytest, ruff, mypy
 
@@ -20,14 +20,24 @@ T-Invest Signal Bot — signal scanner на T-Invest API.
 
 ```bash
 uv sync                          # установить зависимости
-uv run python -m tradebot        # запустить бота
+UV_HTTP_TIMEOUT=120 uv pip install t-tech-investments \
+  --index-url https://opensource.tbank.ru/api/v4/projects/238/packages/pypi/simple
+                                 # установить T-Invest SDK (после каждого uv sync!)
+uv run tradebot db:init          # создать tradebot.db и применить миграции
+uv run tradebot smoke            # проверить конфигурацию
+uv run tradebot run              # запустить бота (полный цикл)
+uv run python -m tradebot        # то же самое через __main__
+uv run tradebot scan-once --ticker SBER --tf 1h  # один прогон (диагностика, без БД)
+uv run tradebot analyze --ticker SBER --tf 1h    # анализ из БД
+uv run tradebot resolve --ticker SBER            # ticker → figi
+uv run tradebot fetch-candles --ticker SBER      # загрузить свечи в БД
+uv run tradebot watchlist:load watchlist.yaml    # загрузить watchlist
 uv run pytest                    # все тесты
 uv run pytest tests/unit/        # unit-тесты
 uv run ruff check src/           # линтер
 uv run ruff format src/          # форматирование
 uv run mypy src/                 # типы
-docker compose up -d db          # PostgreSQL
-uv run alembic upgrade head      # применить миграции
+uv run alembic upgrade head      # применить миграции (альтернатива db:init)
 uv run alembic revision --autogenerate -m "name"  # новая миграция
 ```
 
@@ -39,7 +49,7 @@ Scheduler → ScannerService → MarketDataProvider
                            → RiskEngine (entry/stop/take, R/R≥2, dedup)
                            → AIAnalyzer (optional, fallback: Noop)
                            → SignalFormatter → TelegramNotifier
-                           → SignalRepository → PostgreSQL
+                           → SignalRepository → SQLite (tradebot.db)
 ```
 
 Подробности: [docs/ARCHITECTURE_NOTES.md](docs/ARCHITECTURE_NOTES.md)
@@ -47,18 +57,37 @@ Scheduler → ScannerService → MarketDataProvider
 ## Структура src/tradebot/
 
 ```
-core/        # конфиги, базовые типы, протоколы
-market/      # MarketDataProvider, T-Invest client
-strategy/    # TrendAnalyzer, LevelAnalyzer, VolumeAnalyzer, VolatilityCalc
-risk/        # RiskEngine, дедупликация
-ai/          # AIAnalyzer, NoopAIAnalyzer
-news/        # NewsProvider, MockNewsProvider
-signals/     # SignalFormatter, модели Signal
-telegram/    # TelegramNotifier, aiogram
-db/          # SQLAlchemy модели, репозитории, Alembic
-scheduler/   # ScannerService
-executor/    # TradingExecutor (STUB ONLY, disabled в фазе 1)
+core/        # конфиги (Settings), базовые типы, enums, errors, logging
+broker/      # TInvestClient, InstrumentResolver, fetch_candles, trading_status, rate_limiter
+analysis/    # indicators, trend, levels, volume, volatility, structure, snapshot (AnalysisSnapshot)
+strategy/    # BaseStrategy, TrendBreakout, Bounce, Pullback, Breakdown, StrategyEngine
+risk/        # RiskValidator (R/R≥2, ATR), SignalDeduplicator (one-shot in-memory)
+ai/          # AIAnalyzer (NVIDIA/OpenAI), NoopAIAnalyzer (fallback), AIAnalysis
+news/        # NewsProvider (Protocol), MockNewsProvider (stub)
+signals/     # SignalCandidate, NoSignalLog (models), SignalFormatter (Telegram HTML)
+telegram/    # TelegramNotifier (aiogram Bot, HTML)
+scheduler/   # ScannerService (полный цикл), Scheduler (asyncio loop)
+db/          # SQLAlchemy модели, UnitOfWork, Alembic
+data/        # CandlesRepository, InstrumentsRepository, WatchlistRepository, SignalRepository
+executor/    # TradingExecutor (STUB ONLY, raise NotImplementedError, disabled в фазе 1)
 ```
+
+## БД (SQLite)
+
+- Файл: `tradebot.db` в корне проекта
+- Async driver: `aiosqlite` (URL: `sqlite+aiosqlite:///./tradebot.db`)
+- Alembic sync driver: `sqlite://` (конвертируется в `migrations/env.py`)
+- Диалект для upsert: `sqlalchemy.dialects.sqlite.insert` (НЕ postgresql)
+- JSON тип: `sa.JSON` (НЕ `postgresql.JSONB`)
+- Docker НЕ нужен, `docker-compose.yml` удалён
+
+## SDK (T-Invest)
+
+- Пакет: `t-tech-investments==0.3.5`
+- Import path: `from t_tech.invest import AsyncClient, ...`
+- Запрещены: tinvest, tinkoff-investments, tinkoff.invest
+- Установка: `UV_HTTP_TIMEOUT=120 uv pip install t-tech-investments --index-url https://opensource.tbank.ru/api/v4/projects/238/packages/pypi/simple`
+- **После каждого `uv sync` нужно переустановить SDK**
 
 ## Правила проекта
 
@@ -70,6 +99,7 @@ executor/    # TradingExecutor (STUB ONLY, disabled в фазе 1)
 - AI как финальное решение — запрещено
 - Токены в логах и коде — запрещено
 - Монолитные файлы > 500 строк — запрещено
+- `sqlalchemy.dialects.postgresql` — запрещено (используется SQLite)
 
 **Обязательно:**
 - Все no-signal причины логировать в БД
@@ -91,9 +121,19 @@ executor/    # TradingExecutor (STUB ONLY, disabled в фазе 1)
 Активны: `claude-mem`, `caveman`.  
 Отключены (не использовать): superpowers, context7, code-review, code-simplifier, claude-md-management, security-guidance, chrome-devtools-mcp.
 
+## Текущий статус (Stage 4 завершён, 2026-05-03)
+
+- **111/111 unit-тестов** зелёных, ruff чист
+- Реализованы слои: analysis → strategy → risk → AI → formatter → notifier → scheduler
+- Миграции: 001 (instruments/watchlist/candles) + 002 (analysis tables) + 003 (signals/no_signal_logs)
+- Команда `tradebot run` — полный рабочий цикл
+
 ## Предположения
 
-- T-Invest SDK: пакет `tinkoff.invest` (официальный Python gRPC SDK)
+- T-Invest SDK: `t_tech.invest` (зафиксировано на Stage 1, import path подтверждён)
 - NVIDIA AI API: OpenAI-совместимый интерфейс (`openai` SDK, custom `base_url`)
-- Дубль сигнала: тот же ticker + direction в течение `DUPLICATE_SIGNAL_HOURS` часов
+- AI: `AI_ENABLED=true` + `NVIDIA_AI_API_KEY` → `AIAnalyzer`; иначе `NoopAIAnalyzer` (fallback)
+- AI не принимает финальных решений: `approve=False` при `confidence≥0.7` блокирует сигнал
+- Дубль сигнала: тот же ticker + direction — **отправляется ровно один раз, повторов нет никогда**
 - Аномальный объём: > `VOLUME_ANOMALY_MULTIPLIER` × средний объём за `ATR_PERIOD` периодов
+- Windows-клиент: install.bat создаётся в финальной фазе (после Stage 7), план в `docs/DEPLOYMENT_WINDOWS.md`

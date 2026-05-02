@@ -6,7 +6,6 @@ Create Date: 2026-04-29
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision = "001"
 down_revision = None
@@ -32,13 +31,13 @@ def upgrade() -> None:
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
+            server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
+            server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
         sa.UniqueConstraint("ticker", name="uq_instruments_ticker"),
@@ -49,13 +48,13 @@ def upgrade() -> None:
         "watchlist",
         sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
         sa.Column("ticker", sa.String(20), nullable=False),
-        sa.Column("enabled", sa.Boolean, nullable=False, server_default="true"),
-        sa.Column("tags", postgresql.JSONB, nullable=True),
+        sa.Column("enabled", sa.Boolean, nullable=False, server_default=sa.true()),
+        sa.Column("tags", sa.JSON, nullable=True),
         sa.Column("notes", sa.Text, nullable=True),
         sa.Column(
             "added_at",
             sa.DateTime(timezone=True),
-            server_default=sa.text("now()"),
+            server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
         sa.UniqueConstraint("ticker", name="uq_watchlist_ticker"),
@@ -71,7 +70,7 @@ def upgrade() -> None:
         sa.Column("low", sa.Numeric(20, 9), nullable=False),
         sa.Column("close", sa.Numeric(20, 9), nullable=False),
         sa.Column("volume", sa.BigInteger, nullable=False),
-        sa.Column("is_complete", sa.Boolean, nullable=False, server_default="true"),
+        sa.Column("is_complete", sa.Boolean, nullable=False, server_default=sa.true()),
         sa.PrimaryKeyConstraint("figi", "tf", "ts", name="pk_candles"),
     )
     op.create_index("ix_candles_figi_tf_ts", "candles", ["figi", "tf", sa.text("ts DESC")])

@@ -9,10 +9,10 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Подставляем DATABASE_URL из окружения (переменная должна быть без +asyncpg для sync Alembic)
+# Конвертируем async URL → sync URL для Alembic (sync-only)
 database_url = os.environ.get("DATABASE_URL", "")
-if database_url.startswith("postgresql+asyncpg://"):
-    database_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+if database_url.startswith("sqlite+aiosqlite://"):
+    database_url = database_url.replace("sqlite+aiosqlite://", "sqlite://", 1)
 
 if database_url:
     config.set_main_option("sqlalchemy.url", database_url)

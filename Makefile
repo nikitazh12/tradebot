@@ -1,4 +1,4 @@
-.PHONY: install install-sdk sync lint fmt typecheck test test-unit smoke db-up db-down migrate
+.PHONY: install install-sdk sync lint fmt typecheck test test-unit smoke db-init migrate
 
 install:
 	uv sync
@@ -27,11 +27,8 @@ test-unit:
 smoke:
 	uv run tradebot smoke
 
-db-up:
-	docker compose up -d db
-
-db-down:
-	docker compose down
+db-init:
+	uv run tradebot db:init
 
 migrate:
 	uv run alembic upgrade head

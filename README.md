@@ -15,9 +15,10 @@ Telegram-бот для сигналов на основе T-Invest API.
 
 - Python 3.12+
 - [uv](https://github.com/astral-sh/uv)
-- Docker (для PostgreSQL)
 - Read-only токен T-Invest API
 - Telegram Bot Token
+
+Docker не нужен — используется SQLite (файл `tradebot.db` в корне проекта).
 
 ## Быстрый старт
 
@@ -29,15 +30,19 @@ cd tradebot
 # Установить зависимости
 uv sync
 
+# Установить T-Invest SDK (отдельный шаг — корпоративный PyPI)
+UV_HTTP_TIMEOUT=120 uv pip install t-tech-investments \
+  --index-url https://opensource.tbank.ru/api/v4/projects/238/packages/pypi/simple
+
 # Настроить окружение
 cp .env.example .env
 # Заполнить .env своими токенами
 
-# Запустить PostgreSQL
-docker compose up -d db
+# Инициализировать БД (создаёт tradebot.db и применяет миграции)
+uv run tradebot db:init
 
-# Применить миграции
-uv run alembic upgrade head
+# Проверить конфигурацию
+uv run tradebot smoke
 
 # Запустить бота
 uv run python -m tradebot

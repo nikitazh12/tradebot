@@ -96,6 +96,142 @@ from t_tech.invest import AsyncClient, CandleInterval, ...
 
 ---
 
+## 2026-04-30 — Stage 1.5: SQLite вместо PostgreSQL, убран Docker
+
+**Причина:** проект будет работать на Windows-машине клиента без Docker/PostgreSQL.
+SQLite встроен в Python, нулевая установка, файл `tradebot.db` в корне проекта.
+
+**Сделано:**
+- `pyproject.toml`: удалены `asyncpg`, `psycopg2-binary`; добавлен `aiosqlite>=0.19`
+- `.env.example`: `DATABASE_URL=sqlite+aiosqlite:///./tradebot.db`
+- `src/tradebot/db/models/watchlist.py`: `postgresql.JSONB` → `sa.JSON`
+- `src/tradebot/data/*_repository.py` (×3): `dialects.postgresql.insert` → `dialects.sqlite.insert`
+- `src/tradebot/db/base.py`: `connect_args={"check_same_thread": False}` для SQLite
+- `migrations/env.py`: `sqlite+aiosqlite://` → `sqlite://` для Alembic sync
+- `migrations/versions/001_*.py`: `postgresql.JSONB`→`sa.JSON`, `sa.text("now()")`→`sa.func.current_timestamp()`, `server_default="true"`→`sa.true()`
+- `src/tradebot/cli.py`: новая команда `db:init` (создаёт БД + `alembic upgrade head`)
+- `Makefile`: `db-up`/`db-down` → `db-init`
+- `README.md`: quickstart без Docker
+- `docs/DEPLOYMENT_WINDOWS.md`: заглушка с планом `install.bat` / `run.bat` для финальной фазы
+- `docker-compose.yml`: **удалён**
+- `CLAUDE.md`: обновлён под SQLite-стек
+
+**Результат проверки:**
+- `uv sync` → OK
+- `DATABASE_URL=sqlite+aiosqlite:///./tradebot.db uv run tradebot db:init` → `tradebot.db` создан, миграция 001 применена
+- `uv run pytest tests/unit/` → 32/32 passed
+- `uv run ruff check src/ tests/` → All checks passed
+- `uv run tradebot smoke` → ЧАСТИЧНО OK (ожидаемо без .env)
+
+**Следующий шаг — Stage 2:**
+1. `src/tradebot/analysis/` — indicators, trend, levels, volume, volatility, structure, snapshot
+2. DB модели: indicator_snapshots, detected_levels (миграция #002)
+3. CLI `tradebot analyze --ticker SBER` — детерминированный отчёт
+4. Unit-тесты на эталонных свечах (`tests/fixtures/candles/`)
+
+---
+
+---
+
+## 2026-04-30 — Stage 2: Analysis Engine
+
+**Сделано:**
+- `src/tradebot/analysis/indicators.py` — SMA, EMA, ATR (Wilder), RSI, rel_volume
+- `src/tradebot/analysis/trend.py` — TrendInfo, analyze_trend (EMA20/50/200 + slope)
+- `src/tradebot/analysis/levels.py` — swing high/low detection, кластеризация, LevelsInfo
+- `src/tradebot/analysis/volume.py` — VolumeContext, rel_volume, аномалия
+- `src/tradebot/analysis/volatility.py` — VolatilityContext, ATR-режим (expanding/contracting)
+- `src/tradebot/analysis/structure.py` — StructureContext, impulse/pullback/consolidation/false-breakout
+- `src/tradebot/analysis/snapshot.py` — AnalysisSnapshot dataclass, build_snapshot()
+- `src/tradebot/db/models/indicator_snapshot.py` — ORM модель indicator_snapshots
+- `src/tradebot/db/models/detected_level.py` — ORM модель detected_levels
+- `src/tradebot/db/models/__init__.py` — обновлён
+- `migrations/versions/002_analysis_tables.py` — миграция indicator_snapshots + detected_levels
+- `src/tradebot/cli.py` — команда `analyze --ticker --tf`
+- `tests/unit/analysis/` — 44 unit-теста (indicators, trend, levels, volume, volatility, structure)
+- `tests/fixtures/candles/` — uptrend.json, downtrend.json, ranging.json
+
+**Уточнение из сессии:**
+- Сигналы отправляются **ровно один раз** — без повторов, без окна дедупликации
+
+**Результат проверки:**
+- `uv run pytest tests/unit/` → 76/76 passed
+- `uv run ruff check src/ tests/` → All checks passed
+- `uv run tradebot db:init` → миграции 001+002 применены, tradebot.db создан
+
+**Следующий шаг — Stage 3:**
+1. `src/tradebot/strategy/` — base, trend_breakout, bounce_level, pullback_in_trend, breakdown, engine
+2. `src/tradebot/risk/` — validator, deduplicator (one-shot), position_sizing, horizon
+3. `src/tradebot/signals/` — Signal pydantic model, SignalCandidate, repository
+4. Миграция #003: signal_candidates, final_signals, signal_events, no_signal_reasons, bot_runs
+5. CLI `scan-once --ticker SBER`
+
+---
+
+---
+
+## 2026-05-02 — Stage 3: Strategy Engine + Risk Engine + Signals + CLI scan-once
+
+**Сделано:**
+- `src/tradebot/signals/models.py` — `SignalCandidate`, `NoSignalLog` (dataclasses)
+- `src/tradebot/strategy/` — `BaseStrategy`, `TrendBreakoutStrategy`, `BounceStrategy`, `PullbackStrategy`, `BreakdownStrategy`, `StrategyEngine`
+- `src/tradebot/risk/validator.py` — `RiskValidator` (RR, stop/take, ATR-проверки)
+- `src/tradebot/risk/deduplicator.py` — `SignalDeduplicator` (one-shot, in-memory)
+- `src/tradebot/db/models/signal.py` — ORM модель `Signal`
+- `src/tradebot/db/models/no_signal_log.py` — ORM модель `NoSignalLogEntry`
+- `src/tradebot/data/signal_repository.py` — `SignalRepository`
+- `migrations/versions/003_signals_tables.py` — таблицы `signals`, `no_signal_logs`
+- `src/tradebot/cli.py` — команда `scan-once --ticker --tf --limit`
+- `tests/unit/strategy/` — 20 тестов (TrendBreakout, RiskValidator, Deduplicator)
+
+**Зафиксировано:**
+- Дедупликация: one-shot in-memory, ключ `(ticker, direction)`, повторов нет никогда
+- risk_level: LOW если RSI < 30 или > 70, иначе MEDIUM
+- horizon: M1/M5/M15 → INTRADAY, H1 → SHORT_1_3D, D1 → SHORT_2_5D
+- scan-once — только диагностика (в БД не пишет)
+
+**Результат проверки:**
+- `uv run pytest tests/unit/` → 96/96 passed
+- `uv run ruff check src/ tests/` → All checks passed
+- `DATABASE_URL=... uv run tradebot db:init` → миграции 001+002+003 применены OK
+
+**Следующий шаг — Stage 4:**
+1. `src/tradebot/ai/` — `AIAnalyzer` (NVIDIA API, OpenAI-совместимый), `NoopAIAnalyzer`
+2. `src/tradebot/news/` — `NewsProvider` (stub), `MockNewsProvider`
+3. `src/tradebot/signals/formatter.py` — `SignalFormatter` (Telegram markdown)
+4. `src/tradebot/telegram/` — `TelegramNotifier` (aiogram)
+5. Интеграция: `ScannerService` + `Scheduler`
+6. CLI `run` (полный цикл)
+
+---
+
+## 2026-05-03 — Stage 4: AI Analyzer + Telegram Notifier + ScannerService
+
+**Сделано:**
+- `pyproject.toml` — добавлены `aiogram>=3.7`, `openai>=1.30`
+- `src/tradebot/ai/` — `AIAnalysis`, `AIAnalyzer` (NVIDIA OpenAI-совместимый), `NoopAIAnalyzer`, `AIAnalyzerProtocol`
+- `src/tradebot/news/` — `NewsItem`, `NewsProvider` (Protocol), `MockNewsProvider` (stub)
+- `src/tradebot/signals/formatter.py` — `SignalFormatter` (Telegram HTML)
+- `src/tradebot/telegram/` — `TelegramNotifier` (aiogram Bot, send_message, HTML parse mode)
+- `src/tradebot/scheduler/scanner_service.py` — `ScannerService` (полный цикл: watchlist → candles → snapshot → strategy → risk → AI → notify → save)
+- `src/tradebot/scheduler/scheduler.py` — `Scheduler` (asyncio loop, SIGINT/SIGTERM stop)
+- `src/tradebot/data/candles_repository.py` — добавлен `get_last()` (последние N свечей по убыванию, разворот)
+- `src/tradebot/cli.py` — команда `run` (полный цикл, AI опционально через `AI_ENABLED`)
+- `tests/unit/signals/test_formatter.py` — 8 тестов SignalFormatter
+- `tests/unit/ai/test_noop_analyzer.py` — 3 теста NoopAIAnalyzer
+- `tests/unit/ai/test_ai_analysis.py` — 4 теста AIAnalysis dataclass
+
+**Результат проверки:**
+- `uv run pytest tests/unit/` → 111/111 passed
+- `uv run ruff check src/ tests/` → All checks passed
+
+**Следующий шаг — Stage 5:**
+1. Интеграционный тест `ScannerService` с мок-данными
+2. `watchlist.yaml` пример с несколькими тикерами
+3. `__main__.py` — точка входа `uv run python -m tradebot`
+4. Финальный E2E: `tradebot run` с реальными данными (smoke)
+5. Опционально: `tradebot news` команда, `NewsProvider` реализация
+
 <!-- Шаблон записи:
 ## YYYY-MM-DD — Название этапа
 
