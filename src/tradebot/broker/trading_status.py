@@ -16,3 +16,9 @@ async def get_trading_status(client: AsyncClient, figi: str) -> SecurityTradingS
 
 def is_normal_trading(status: SecurityTradingStatus) -> bool:
     return status == SecurityTradingStatus.SECURITY_TRADING_STATUS_NORMAL_TRADING
+
+
+async def is_tradeable(client: AsyncClient, figi: str) -> bool:
+    """True если инструмент в нормальном торговом статусе."""
+    status = await get_trading_status(client, figi)
+    return is_normal_trading(status)

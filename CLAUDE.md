@@ -121,12 +121,19 @@ executor/    # TradingExecutor (STUB ONLY, raise NotImplementedError, disabled �
 Активны: `claude-mem`, `caveman`.  
 Отключены (не использовать): superpowers, context7, code-review, code-simplifier, claude-md-management, security-guidance, chrome-devtools-mcp.
 
-## Текущий статус (Stage 4 завершён, 2026-05-03)
+## Текущий статус (Stage 5 завершён, 2026-05-03)
 
-- **111/111 unit-тестов** зелёных, ruff чист
+- **118/118 unit-тестов** зелёных, ruff чист
 - Реализованы слои: analysis → strategy → risk → AI → formatter → notifier → scheduler
 - Миграции: 001 (instruments/watchlist/candles) + 002 (analysis tables) + 003 (signals/no_signal_logs)
 - Команда `tradebot run` — полный рабочий цикл
+- **executor/** stub реализован (Phase 1: raise NotImplementedError)
+- **watchlist.yaml** загружен: 87 тикеров (голубые фишки, технологии, сырьё, финансы, телеком)
+- **Интеграционные тесты ScannerService**: 7/7 passed (empty watchlist, not tradeable, insufficient candles, valid signal, AI blocking, dedup)
+- **Исправленные баги Stage 5**:
+  1. `is_tradeable()` добавлена в `broker/trading_status.py`
+  2. `scanner_service.py`: figi теперь резолвится через InstrumentsRepository (WatchlistEntry не хранит figi)
+  3. `watchlist_repository.py`: поддерживает оба ключа YAML (`tickers:` и `watchlist:`)
 
 ## Предположения
 

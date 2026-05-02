@@ -13,6 +13,7 @@ from tradebot.broker.trading_status import is_tradeable
 from tradebot.core.config import Settings
 from tradebot.core.enums import NoSignalReason, Timeframe
 from tradebot.data.candles_repository import CandlesRepository
+from tradebot.data.instruments_repository import InstrumentsRepository
 from tradebot.data.signal_repository import SignalRepository
 from tradebot.data.watchlist_repository import WatchlistRepository
 from tradebot.db.models.candle import Candle
@@ -66,7 +67,13 @@ class ScannerService:
         logger.info("Сканируем %d инструментов", len(entries))
         for entry in entries:
             try:
-                await self._scan_instrument(entry.ticker, entry.figi)
+                async with UnitOfWork() as uow:
+                    inst_repo = InstrumentsRepository(uow.session)
+                    instrument = await inst_repo.get_by_ticker(entry.ticker)
+                if instrument is None:
+                    logger.warning("%s: инструмент не найден в БД, пропускаем", entry.ticker)
+                    continue
+                await self._scan_instrument(instrument.ticker, instrument.figi)
             except Exception as e:
                 logger.error("Ошибка сканирования %s: %s", entry.ticker, e)
 

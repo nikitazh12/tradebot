@@ -1,0 +1,212 @@
+# watchlist.yaml — загрузка: uv run tradebot watchlist:load watchlist.yaml
+
+tickers:
+  # Голубые фишки (ликвидность, низкая волатильность)
+  - ticker: SBER
+    notes: "Сбербанк"
+  - ticker: GAZP
+    notes: "Газпром"
+  - ticker: LKOH
+    notes: "Лукойл"
+  - ticker: NVTK
+    notes: "Новатэк"
+  - ticker: TATN
+    notes: "Татнефть"
+  - ticker: ROSN
+    notes: "Роснефть"
+  - ticker: GMKN
+    notes: "Норильский никель"
+  - ticker: MTSS
+    notes: "МТС"
+  - ticker: VTBR
+    notes: "ВТБ"
+  - ticker: POSI
+    notes: "Positive Technologies"
+  - ticker: AFLT
+    notes: "Аэрофлот"
+  - ticker: YNDX
+    notes: "Яндекс"
+  - ticker: MAGN
+    notes: "Магнитогорский ММК"
+  - ticker: NLMK
+    notes: "НЛМК"
+  - ticker: POLYMETAL
+    notes: "Полиметалл"
+  - ticker: POLYMETAL
+    notes: "Полиметалл"
+  - ticker: FEES
+    notes: "ФСК ЕЭС"
+  - ticker: DIVI
+    notes: "Дивидендная стратегия"
+  - ticker: LIFE
+    notes: "ВТБ Лайф"
+  - ticker: RSTI
+    notes: "РССИ"
+  - ticker: IRAO
+    notes: "РАО ЭЭС"
+  - ticker: ROLO
+    notes: "РОЛ"
+  - ticker: RSTI
+    notes: "РССИ"
+  - ticker: RSTI
+    notes: "РССИ"
+  - ticker: RSTI
+    notes: "РССИ"
+  - ticker: IMOEX
+    notes: "Индекс МосБиржи"
+
+  # Технологии и интернет
+  - ticker: YNDX
+    notes: "Яндекс"
+  - ticker: VK
+    notes: "VK (VKontakte)"
+  - ticker: MTLR
+    notes: "Металлоинвест"
+  - ticker: LEAS
+    notes: "Лизинг"
+  - ticker: POSI
+    notes: "Positive Technologies"
+
+  # Сырьевые
+  - ticker: GAZP
+    notes: "Газпром"
+  - ticker: LKOH
+    notes: "Лукойл"
+  - ticker: NVTK
+    notes: "Новатэк"
+  - ticker: ROSN
+    notes: "Роснефть"
+  - ticker: TATN
+    notes: "Татнефть"
+  - ticker: GMKN
+    notes: "Норильский никель"
+  - ticker: NLMK
+    notes: "НЛМК"
+  - ticker: MTLR
+    notes: "Металлоинвест"
+  - ticker: MAGN
+    notes: "ММК"
+  - ticker: SUGB
+    notes: "Сугб"
+
+  # Финансы
+  - ticker: SBER
+    notes: "Сбербанк"
+  - ticker: VTBR
+    notes: "ВТБ"
+  - ticker: MTSS
+    notes: "МТС"
+  - ticker: MOEX
+    notes: "МосБиржа"
+  - ticker: RSTI
+    notes: "РССИ"
+
+  # Телеком и медиа
+  - ticker: MTSS
+    notes: "МТС"
+  - ticker: RSTI
+    notes: "РОСТЕЛЕКОМ"
+  - ticker: PIKK
+    notes: "ПИК"
+
+  # Промышленность
+  - ticker: AFLT
+    notes: "Аэрофлот"
+  - ticker: NLMK
+    notes: "НЛМК"
+  - ticker: MAGN
+    notes: "ММК"
+  - ticker: MTLR
+    notes: "Металлоинвест"
+
+  # Дополнительные акции из списка
+  - ticker: IVAT
+  - ticker: VKCO
+  - ticker: MRKC
+  - ticker: DIAS
+  - ticker: MTLR
+  - ticker: LEAS
+  - ticker: CHMF
+  - ticker: ASTR
+  - ticker: PHOR
+  - ticker: MTLRP
+  - ticker: POSI
+  - ticker: PMSB
+  - ticker: SVCB
+  - ticker: LKOH
+  - ticker: TATN
+  - ticker: LSNG
+  - ticker: MTSS
+  - ticker: NVTK
+  - ticker: MGKL
+  - ticker: RASP
+  - ticker: SIBN
+  - ticker: LSNGP
+  - ticker: CNTL
+  - ticker: MGTSP
+  - ticker: SBER
+  - ticker: MDMG
+  - ticker: MBNK
+  - ticker: CHMK
+  - ticker: EUTR
+  - ticker: VTBR
+  - ticker: DELI
+  - ticker: IRKT
+  - ticker: GMKN
+  - ticker: CARM
+  - ticker: OKEY
+  - ticker: T
+  - ticker: RTKM
+  - ticker: PMSBP
+  - ticker: SFIN
+  - ticker: FEES
+  - ticker: MRKZ
+  - ticker: DVEC
+  - ticker: ABRD
+  - ticker: MSNG
+  - ticker: TRMK
+  - ticker: SGZH
+  - ticker: UPRO
+  - ticker: ENPG
+  - ticker: LIFE
+  - ticker: RUAL
+  - ticker: ROSN
+  - ticker: RENI
+  - ticker: KROT
+  - ticker: MSTT
+  - ticker: KMAZ
+  - ticker: WUSH
+  - ticker: GEMC
+  - ticker: FESH
+  - ticker: BLNG
+  - ticker: ABIO
+  - ticker: APTK
+  - ticker: AFKS
+  - ticker: RNFT
+  - ticker: GAZP
+  - ticker: VRSB
+  - ticker: PIKK
+  - ticker: SNGS
+  - ticker: UWGN
+  - ticker: SOFL
+  - ticker: MOEX
+  - ticker: SVAV
+  - ticker: LENT
+  - ticker: MVID
+  - ticker: NKHP
+  - ticker: NSVZ
+  - ticker: TTLK
+  - ticker: BELU
+  - ticker: GECO
+  - ticker: UNAC
+  - ticker: GTRK
+  - ticker: KLSB
+  - ticker: KZOS
+  - ticker: YAKG
+  - ticker: ALRS
+  - ticker: PLZL
+  - ticker: FLOT
+  - ticker: LSRG
+  - ticker: KZOSP
+  - ticker: AQUA
+  - ticker: SMLT

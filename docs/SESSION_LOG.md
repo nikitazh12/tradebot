@@ -232,6 +232,33 @@ SQLite встроен в Python, нулевая установка, файл `tr
 4. Финальный E2E: `tradebot run` с реальными данными (smoke)
 5. Опционально: `tradebot news` команда, `NewsProvider` реализация
 
+---
+
+## 2026-05-03 — Stage 5: executor stub + интеграционные тесты ScannerService + watchlist.yaml
+
+**Сделано:**
+- `watchlist.yaml` — 10 реальных тикеров (SBER, GAZP, LKOH, YNDX, NVTK, GMKN, ROSN, MTSS, POSI, AFLT)
+- `src/tradebot/executor/` — `TradingExecutor` протокол (Phase 1: raise NotImplementedError)
+- `src/tradebot/broker/trading_status.py` — добавлена `is_tradeable()` (была отсутствующей функцией)
+- `src/tradebot/data/watchlist_repository.py` — фикс YAML-парсера: `tickers:` и `watchlist:` оба работают
+- `src/tradebot/scheduler/scanner_service.py` — фикс `entry.figi`: теперь figi берётся из `InstrumentsRepository` по ticker (WatchlistEntry не имеет figi)
+- `src/tradebot/data/signal_repository.py` — добавлен `get_no_signal_logs()`
+- `tests/unit/scheduler/test_scanner_service.py` — 7 интеграционных тестов ScannerService с in-memory SQLite
+
+**Результат проверки:**
+- `uv run pytest tests/unit/` → 118/118 passed
+- `uv run ruff check src/ tests/` → All checks passed
+
+**Баги найдены и исправлены в Stage 5:**
+1. `is_tradeable` отсутствовала в `trading_status.py` — scanner импортировал несуществующую функцию
+2. `entry.figi` в scanner_service — `WatchlistEntry` не хранит figi, нужен lookup через `InstrumentsRepository`
+3. `WatchlistRepository.load_from_file` читал `watchlist:` вместо `tickers:` (ключ из `watchlist.yaml`)
+
+**Следующий шаг — Stage 5.3 (E2E):**
+- Заполнить `.env` реальными токенами
+- `uv run tradebot watchlist:load watchlist.yaml`
+- `uv run tradebot run` — убедиться что сигнал доходит в Telegram
+
 <!-- Шаблон записи:
 ## YYYY-MM-DD — Название этапа
 
