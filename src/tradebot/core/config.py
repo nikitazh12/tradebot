@@ -18,7 +18,7 @@ class Settings(BaseSettings):
 
     # Telegram
     telegram_bot_token: str = ""
-    telegram_chat_id: str = ""
+    telegram_chat_ids: str = ""  # список ID через запятую/точку с запятой
 
     # Database
     database_url: str = ""
@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     # Сканер
     scan_interval_seconds: int = 60
+    watchlist_path: str = "watchlist.yaml"
     environment: str = "development"
     log_level: str = "INFO"
 
@@ -60,6 +61,17 @@ class Settings(BaseSettings):
             raise ValueError(f"LOG_LEVEL должен быть одним из {allowed}")
         return v.upper()
 
+    def get_telegram_chat_ids(self) -> list[int]:
+        """Парсит TELEGRAM_CHAT_IDS (список через запятую/точку с запятой) в список int."""
+        if not self.telegram_chat_ids:
+            return []
+        # Поддерживаем оба формата: 123,456 и 123;456
+        sep = ";" if ";" in self.telegram_chat_ids else ","
+        try:
+            return [int(cid.strip()) for cid in self.telegram_chat_ids.split(sep) if cid.strip()]
+        except ValueError as e:
+            raise ValueError(f"TELEGRAM_CHAT_IDS содержит некорректные ID: {e}") from e
+
     def missing_required_vars(self) -> list[str]:
         """Возвращает список обязательных переменных, которые не заполнены."""
         missing = []
@@ -67,8 +79,8 @@ class Settings(BaseSettings):
             missing.append("TINVEST_READONLY_TOKEN")
         if not self.telegram_bot_token:
             missing.append("TELEGRAM_BOT_TOKEN")
-        if not self.telegram_chat_id:
-            missing.append("TELEGRAM_CHAT_ID")
+        if not self.telegram_chat_ids:
+            missing.append("TELEGRAM_CHAT_IDS")
         if not self.database_url:
             missing.append("DATABASE_URL")
         return missing

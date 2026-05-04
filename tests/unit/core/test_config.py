@@ -10,7 +10,7 @@ def make_minimal_settings(**overrides: object) -> Settings:
     defaults = {
         "tinvest_readonly_token": "test_token",
         "telegram_bot_token": "test_tg_token",
-        "telegram_chat_id": "123456",
+        "telegram_chat_ids": "123456,789012",
         "database_url": "postgresql+asyncpg://u:p@localhost/db",
     }
     defaults.update(overrides)
@@ -18,10 +18,16 @@ def make_minimal_settings(**overrides: object) -> Settings:
 
 
 def test_settings_missing_vars_all_empty() -> None:
-    s = Settings.model_validate({})
+    s = Settings.model_construct(
+        tinvest_readonly_token="",
+        telegram_bot_token="",
+        telegram_chat_ids="",
+        database_url="",
+    )
     missing = s.missing_required_vars()
     assert "TINVEST_READONLY_TOKEN" in missing
     assert "TELEGRAM_BOT_TOKEN" in missing
+    assert "TELEGRAM_CHAT_IDS" in missing
     assert "DATABASE_URL" in missing
 
 
@@ -53,3 +59,27 @@ def test_valid_log_levels() -> None:
     for level in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
         s = Settings.model_validate({"log_level": level})
         assert s.log_level == level
+
+
+def test_telegram_chat_ids_parsing() -> None:
+    s = Settings.model_validate({"telegram_chat_ids": "123456,789012"})
+    ids = s.get_telegram_chat_ids()
+    assert ids == [123456, 789012]
+
+
+def test_telegram_chat_ids_semicolon() -> None:
+    s = Settings.model_validate({"telegram_chat_ids": "111;222;333"})
+    ids = s.get_telegram_chat_ids()
+    assert ids == [111, 222, 333]
+
+
+def test_telegram_chat_ids_empty() -> None:
+    s = Settings.model_validate({"telegram_chat_ids": ""})
+    ids = s.get_telegram_chat_ids()
+    assert ids == []
+
+
+def test_telegram_chat_ids_invalid() -> None:
+    s = Settings.model_validate({"telegram_chat_ids": "123,abc,456"})
+    with pytest.raises(ValueError, match="некорректные ID"):
+        s.get_telegram_chat_ids()

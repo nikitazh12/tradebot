@@ -22,11 +22,26 @@ Docker не нужен — используется SQLite (файл `tradebot.d
 
 ## Быстрый старт
 
-```bash
-# Клонировать и перейти в директорию
-git clone ...
-cd tradebot
+### Windows
+Просто запустите файл (всё автоматизировано):
+```batch
+install_windows.bat
+```
+Или в PowerShell:
+```powershell
+powershell -ExecutionPolicy Bypass -File install_windows.ps1
+```
 
+### macOS / Linux
+```bash
+bash install_macos_linux.sh
+```
+
+### Полная документация
+→ [INSTALL.md](INSTALL.md) (все детали, troubleshooting, команды)
+
+### Ручная установка (опционально)
+```bash
 # Установить зависимости
 uv sync
 
@@ -45,7 +60,7 @@ uv run tradebot db:init
 uv run tradebot smoke
 
 # Запустить бота
-uv run python -m tradebot
+uv run tradebot run
 ```
 
 ## Команды разработки

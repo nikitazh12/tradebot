@@ -63,7 +63,7 @@ async def fetch_candles(
     interval = _TF_TO_INTERVAL[tf]
     resp = await retry_grpc(
         lambda: client.market_data.get_candles(
-            GetCandlesRequest(figi=figi, from_=frm, to=to, interval=interval)
+            figi=figi, from_=frm, to=to, interval=interval
         )
     )
 
@@ -89,7 +89,7 @@ async def fetch_last_price(client: AsyncClient, figi: str) -> Decimal | None:
     """Последняя цена инструмента."""
     resp = await retry_grpc(
         lambda: client.market_data.get_last_prices(
-            GetLastPricesRequest(figi=[figi])
+            figi=[figi]
         )
     )
     if not resp.last_prices:

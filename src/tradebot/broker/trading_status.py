@@ -8,7 +8,7 @@ async def get_trading_status(client: AsyncClient, figi: str) -> SecurityTradingS
     """Вернуть SecurityTradingStatus для figi."""
     resp = await retry_grpc(
         lambda: client.market_data.get_trading_status(
-            GetTradingStatusRequest(figi=figi)
+            figi=figi
         )
     )
     return resp.trading_status

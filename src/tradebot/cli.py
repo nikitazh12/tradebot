@@ -433,10 +433,7 @@ def cmd_run(args: argparse.Namespace) -> int:  # noqa: ARG001
 
         init_db(settings.database_url)
 
-        notifier = TelegramNotifier(
-            bot_token=settings.telegram_bot_token,
-            chat_id=settings.telegram_chat_id,
-        )
+        notifier = TelegramNotifier(bot_token=settings.telegram_bot_token)
 
         async with open_client(settings.tinvest_readonly_token) as client:  # type: ignore[arg-type]
             scanner = ScannerService(settings, client, notifier)
@@ -461,6 +458,8 @@ def cmd_run(args: argparse.Namespace) -> int:  # noqa: ARG001
 
     asyncio.run(_run())
     return 0
+
+
 
 
 def build_parser() -> argparse.ArgumentParser:

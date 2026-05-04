@@ -97,7 +97,6 @@ async def test_fetch_candles_uses_from_to() -> None:
 
     await fetch_candles(client, "BBG004730N88", Timeframe.D1, from_dt=from_dt, to_dt=to_dt)
 
-    call_kwargs = client.market_data.get_candles.call_args
-    req = call_kwargs[0][0]
-    assert req.from_ == from_dt
-    assert req.to == to_dt
+    call_kwargs = client.market_data.get_candles.call_args.kwargs
+    assert call_kwargs["from_"] == from_dt
+    assert call_kwargs["to"] == to_dt

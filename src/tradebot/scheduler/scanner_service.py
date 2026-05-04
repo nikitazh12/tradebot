@@ -7,15 +7,16 @@ from decimal import Decimal
 from tradebot.ai.analyzer import AIAnalysis
 from tradebot.ai.noop import NoopAIAnalyzer
 from tradebot.analysis.snapshot import build_snapshot
+from tradebot.broker.instruments import InstrumentResolver
 from tradebot.broker.market_data import fetch_candles
 from tradebot.broker.tinvest_client import TInvestClient
 from tradebot.broker.trading_status import is_tradeable
 from tradebot.core.config import Settings
 from tradebot.core.enums import NoSignalReason, Timeframe
+from tradebot.core.errors import InstrumentNotFoundError
 from tradebot.data.candles_repository import CandlesRepository
-from tradebot.data.instruments_repository import InstrumentsRepository
 from tradebot.data.signal_repository import SignalRepository
-from tradebot.data.watchlist_repository import WatchlistRepository
+from tradebot.data.watchlist_loader import load_tickers
 from tradebot.db.models.candle import Candle
 from tradebot.db.unit_of_work import UnitOfWork
 from tradebot.risk.deduplicator import SignalDeduplicator
@@ -41,6 +42,7 @@ class ScannerService:
         self._settings = settings
         self._client = client
         self._notifier = notifier
+        self._resolver = InstrumentResolver()
         self._strategy_engine = StrategyEngine()
         self._validator = RiskValidator(
             min_rr=settings.min_risk_reward,
@@ -56,26 +58,28 @@ class ScannerService:
         self._ai = ai  # type: ignore[assignment]
 
     async def run_once(self) -> None:
-        async with UnitOfWork() as uow:
-            watchlist_repo = WatchlistRepository(uow.session)
-            entries = await watchlist_repo.get_enabled()
+        tickers = load_tickers(self._settings.watchlist_path)
 
-        if not entries:
+        if not tickers:
             logger.info("Watchlist пустой — нечего сканировать")
             return
 
-        logger.info("Сканируем %d инструментов", len(entries))
-        for entry in entries:
+        user_ids = self._settings.get_telegram_chat_ids()
+        if not user_ids:
+            logger.info("Нет получателей (TELEGRAM_CHAT_IDS пусто) — пропускаем")
+            return
+
+        self._notifier.set_recipients(user_ids)
+
+        logger.info("Сканируем %d инструментов для %d получателей", len(tickers), len(user_ids))
+        for ticker in tickers:
             try:
-                async with UnitOfWork() as uow:
-                    inst_repo = InstrumentsRepository(uow.session)
-                    instrument = await inst_repo.get_by_ticker(entry.ticker)
-                if instrument is None:
-                    logger.warning("%s: инструмент не найден в БД, пропускаем", entry.ticker)
-                    continue
-                await self._scan_instrument(instrument.ticker, instrument.figi)
+                info = await self._resolver.resolve(self._client.raw, ticker)
+                await self._scan_instrument(info.ticker, info.figi)
+            except InstrumentNotFoundError:
+                logger.warning("%s: инструмент не найден в API, пропускаем", ticker)
             except Exception as e:
-                logger.error("Ошибка сканирования %s: %s", entry.ticker, e)
+                logger.error("Ошибка сканирования %s: %s", ticker, e)
 
     async def _scan_instrument(self, ticker: str, figi: str) -> None:
         tf = _DEFAULT_TF
